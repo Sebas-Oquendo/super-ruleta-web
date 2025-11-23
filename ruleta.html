@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSBU Squad Strike - Ultimate Manager Final + Custom Sounds</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,400;0,800;1,900&family=Roboto+Condensed:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --ssbu-red: #e60012;
+            --ssbu-dark: #101012;
+            --ssbu-panel: #1e1e24;
+            --ssbu-text: #ffffff;
+            --ssbu-yellow: #ffe100;
+            --ssbu-blue: #00d2ff;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Roboto Condensed', sans-serif;
+            background-color: var(--ssbu-dark);
+            color: var(--ssbu-text);
+            margin: 0; padding: 0;
+            height: 100vh; 
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* === SIDEBAR === */
+        .sidebar {
+            width: 650px;
+            min-width: 350px;
+            height: 100%;
+            background: #161619;
+            border-right: 4px solid var(--ssbu-red);
+            display: flex; flex-direction: column;
+            z-index: 10;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.5);
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, var(--ssbu-red) 0%, #900 100%);
+            padding: 15px; text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        
+        h1 { 
+            font-family: 'Kanit', sans-serif; font-style: italic; text-transform: uppercase; 
+            margin: 0; font-size: 1.8rem; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); 
+        }
+
+        .sidebar-content {
+            flex: 1; overflow-y: auto; padding: 20px;
+        }
+        .sidebar-content::-webkit-scrollbar { width: 8px; }
+        .sidebar-content::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+        /* === STAGE & WHEEL === */
+        .stage {
+            flex: 1; position: relative;
+            background: radial-gradient(circle at center, #2a2a2d 0%, #000 100%);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .stage::before {
+            content: ''; position: absolute; inset: 0;
+            background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px, transparent 2px, transparent 20px);
+            pointer-events: none;
+        }
+
+        .wheel-container {
+            position: relative; width: 100%; height: 100%;
+            max-width: 800px; max-height: 800px;
+            display: flex; align-items: center; justify-content: center;
+            filter: drop-shadow(0 10px 30px rgba(0,0,0,0.8));
+        }
+
+        .wheel {
+            width: 100%; height: 100%; border-radius: 50%;
+            border: 1.5vmin solid white; background: #222;
+            position: relative; overflow: hidden;
+            transition: transform 4s cubic-bezier(0.1, 0.8, 0.1, 1);
+        }
+
+        .wheel-center {
+            position: absolute; width: 15%; height: 15%;
+            background: #111; border: 0.5vmin solid white; border-radius: 50%;
+            z-index: 20; display: flex; align-items: center; justify-content: center;
+            font-size: 2rem; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .wheel-pointer {
+            position: absolute; left: -3vmin;
+            width: 0; height: 0;
+            border-top: 3vmin solid transparent;
+            border-bottom: 3vmin solid transparent;
+            border-left: 5vmin solid var(--ssbu-yellow);
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5));
+            z-index: 50;
+        }
+
+        .wheel-segment {
+            position: absolute; top: 50%; left: 50%; width: 50%; height: 2px;
+            transform-origin: 0% 50%; display: flex; justify-content: flex-end; align-items: center;
+        }
+        .segment-icon {
+            width: 12%; aspect-ratio: 1; object-fit: cover; border-radius: 50%;
+            border: 2px solid white; background: black;
+            transform: rotate(90deg); margin-right: 15%;
+        }
+
+        /* === OVERLAY GANADOR === */
+        .winner-overlay {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 320px; height: 450px;
+            background: rgba(0,0,0,0.95); border: 4px solid var(--ssbu-yellow);
+            z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none; box-shadow: 0 0 100px rgba(0,0,0,0.8);
+        }
+        .winner-overlay.show { transform: translate(-50%, -50%) scale(1); }
+        
+        .winner-img { width: 90%; height: 250px; object-fit: contain; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2));}
+        .winner-name { font-family: 'Kanit', sans-serif; font-size: 2.2rem; font-weight: 900; font-style: italic; color: white; text-transform: uppercase; margin-bottom: 5px; text-align: center; line-height: 0.9;}
+        .winner-pa { background: var(--ssbu-red); color: white; font-weight: bold; padding: 5px 15px; font-size: 1.2rem; border-radius: 4px; transform: skewX(-10deg); }
+
+        /* === CONTROLES === */
+        .controls-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; margin-bottom: 20px;
+        }
+        .control-item { display: flex; flex-direction: column; }
+        .control-item label { font-size: 0.7rem; color: #aaa; font-weight: bold; margin-bottom: 3px; }
+        select, input { background: #000; color: white; border: 1px solid #444; padding: 8px; font-family: 'Kanit'; width: 100%; }
+        
+        .btn { border: none; padding: 10px; cursor: pointer; font-family: 'Kanit'; font-weight: bold; text-transform: uppercase; clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px); transition: filter 0.2s; }
+        .btn:hover { filter: brightness(1.2); }
+        .btn-full { grid-column: span 2; }
+        .btn-ban { background: #333; color: #fff; }
+        .btn-clear { background: var(--ssbu-blue); color: #000; }
+        .btn-all { background: #8a0000; color: #fff; }
+        .btn-spin { background: var(--ssbu-yellow); color: #000; font-size: 1.2rem; font-style: italic; margin-top: 10px; }
+        .btn-spin:disabled { background: #333; color: #555; cursor: not-allowed; }
+
+        /* === MODAL BANS === */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 200;
+            display: none; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-content {
+            width: 90%; max-width: 800px; max-height: 80vh;
+            background: #1a1a1d; border: 2px solid var(--ssbu-red);
+            display: flex; flex-direction: column; box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        .modal-header { padding: 15px; background: #222; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .modal-body { padding: 20px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+        .ban-card { background: #000; padding: 5px; border: 1px solid #333; display: flex; align-items: center; gap: 5px; font-size: 0.8rem; cursor: pointer; user-select: none; }
+        .ban-card.banned { background: #400; border-color: var(--ssbu-red); opacity: 0.6; }
+        .ban-card img { width: 25px; height: 25px; border-radius: 50%; }
+
+        /* === TEAMS === */
+        .team-block { margin-bottom: 25px; }
+        .team-info { 
+            display: flex; justify-content: space-between; align-items: center; 
+            background: #222; padding: 10px; border-left: 5px solid var(--ssbu-blue); 
+            margin-bottom: 10px;
+        }
+        .team-name-edit { background: transparent; border: none; border-bottom: 1px solid #555; color: white; font-family: 'Kanit'; font-size: 1.2rem; width: 150px; }
+        .team-name-edit:focus { outline: none; border-color: var(--ssbu-yellow); }
+        .score-control { display: flex; align-items: center; gap: 5px; background: #000; padding: 2px 8px; border-radius: 15px; }
+        .score-btn { background: #333; color: white; border: none; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; display:flex; align-items:center; justify-content:center; }
+        .score-btn:hover { background: var(--ssbu-yellow); color: black; }
+
+        .cards-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .card { 
+            width: 100px; height: 140px; background: #000; border: 1px solid #333; position: relative; 
+            display: flex; flex-direction: column; 
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .card.active-spin { border: 2px solid var(--ssbu-yellow); animation: flash 0.5s; }
+        .card-img { width: 100%; height: 80px; object-fit: contain; margin-top: 5px; }
+        .card-name { font-size: 0.7rem; text-align: center; margin-top: auto; background: rgba(255,255,255,0.1); padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .card-pa { position: absolute; top: 0; left: 0; background: var(--ssbu-red); font-size: 0.6rem; padding: 2px 4px; font-weight: bold; }
+        
+        .btn-mini-reroll { width: 100%; border: none; background: #333; color: #aaa; font-size: 0.6rem; cursor: pointer; padding: 2px; }
+        .btn-mini-reroll:hover:not(:disabled) { background: var(--ssbu-blue); color: black; }
+        .btn-mini-reroll:disabled { background: #222; color: #444; cursor: not-allowed; }
+
+        @keyframes flash { 0% { filter: brightness(3); } 100% { filter: brightness(1); } }
+
+        @media (max-width: 800px) {
+            body { flex-direction: column; overflow: auto; }
+            .sidebar { width: 100%; height: auto; }
+            .stage { height: 500px; }
+            .wheel-container { width: 90vmin; height: 90vmin; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <h1>Squad Strike <br><span style="font-size: 1rem; font-weight: 300; color: #ddd;">Ultimate Manager</span></h1>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="controls-grid">
+                <div class="control-item"><label>Equipos</label><input type="number" id="team-count" min="1" max="8" value="2"></div>
+                <div class="control-item"><label>Modo</label><select id="team-size"><option value="3">3 vs 3</option><option value="5">5 vs 5</option></select></div>
+                <div class="control-item"><label>Draft</label><select id="fill-order"><option value="sequential">Secuencial</option><option value="alternating">1vs1 (PingPong)</option></select></div>
+                <div class="control-item"><label>Clase</label><select id="class-filter"><option value="all">★ TODOS</option><option value="Brawler">👊 Brawler</option><option value="Sword">⚔️ Espada</option><option value="Shooter">🔫 Tirador</option><option value="Heavy">🦍 Pesado</option><option value="Misc">✨ Especial</option></select></div>
+
+                <button class="btn btn-ban btn-full" onclick="openBanModal()">⛔ GESTIONAR BANS</button>
+                <button class="btn btn-clear" onclick="setupEmptyGrid()">🧹 LIMPIAR TABLA</button>
+                <button class="btn btn-all" onclick="generateAllTeams()">⚡ GENERAR TODO</button>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <label style="font-size:0.8rem; color:#aaa; display:flex; align-items:center; gap:5px;">
+                    <input type="checkbox" id="allow-dupes" style="width:auto;"> Repetir Personajes
+                </label>
+            </div>
+
+            <button class="btn btn-spin" id="btn-central-spin" style="width: 100%; margin-bottom: 20px;" onclick="triggerCentralSpin()">🎲 GIRAR RULETA ▶</button>
+            
+            <div id="teams-container"></div>
+        </div>
+    </aside>
+
+    <main class="stage">
+        <div class="wheel-container">
+            <div class="wheel-pointer"></div>
+            <div class="wheel" id="visual-wheel"></div>
+            <div class="wheel-center"><img width="100%" src="https://www.pngkey.com/png/full/225-2256701_super-smash-bros-ultimate-logo.png" alt=""></div>
+            <div class="winner-overlay" id="winner-overlay">
+                <img src="" class="winner-img" id="win-img">
+                <div class="winner-name" id="win-name">NOMBRE</div>
+                <div class="winner-pa" id="win-pa">PA: 0</div>
+            </div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="ban-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 style="margin:0; font-family:'Kanit'; color:var(--ssbu-red);">PERSONAJES BANEADOS</h2>
+                <button class="btn btn-ban" onclick="closeBanModal()">CERRAR</button>
+            </div>
+            <div class="modal-body" id="ban-grid"></div>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURACIÓN DE URLs ---
+    const IMG_BASE_URL = "https://github.com/Ikary32/Ikary32.github.io/blob/main/images/";
+    // IMPORTANTE: CAMBIA ESTA URL POR LA DE TU CARPETA DE AUDIOS EN GITHUB
+    const AUDIO_BASE_URL = "https://github.com/Ikary32/Ikary32.github.io/blob/main/audio/"; 
+
+    // Mapa de nombres de archivo especiales (compartido para imágenes y audio)
+    const CHAR_FILENAME_MAP = { 
+        'mr_game_watch':'mrgamewatch', 'rob':'rob', 'dr_mario':'drmario', 'pac_man':'pacman', 
+        'banjo_and_kazooie':'banjokazooie', 'rosalina_luma':'rosalinaluma', 'king_k_rool':'kingkrool', 
+        'mega_man':'megaman', 'wii_fit_trainer':'wiifittrainer', 'toon_link':'toonlink', 
+        'zero_suit_samus':'samuszero', 'young_link':'younglink', 'dark_pit':'darkpit', 
+        'dark_samus':'darksamus', 'bowser_jr':'bowserjr', 'duck_hunt':'duckhunt', 
+        'pokemon_trainer':'pokemontrainer', 'piranha_plant':'piranhaplant', 'ice_climbers':'iceclimbers', 
+        'captain_falcon':'captainfalcon', 'diddy_kong':'diddykong', 'king_dedede':'kingdedede', 
+        'meta_knight':'metaknight', 'little_mac':'littlemac', 'min_min':'minmin', 'pyra':'pyraymythra' 
+    };
+
+    // Función helper para obtener el nombre de archivo limpio
+    function getCleanCharFilename(id) {
+        let name = id.replace(/_/g, '');
+        if(CHAR_FILENAME_MAP[id]) name = CHAR_FILENAME_MAP[id];
+        return name;
+    }
+
+    function getCharImage(id) {
+        return `${IMG_BASE_URL}${getCleanCharFilename(id)}.png?raw=true`;
+    }
+
+    // Nueva función para obtener la URL del audio WAV
+    function getCharSoundUrl(id) {
+        return `${AUDIO_BASE_URL}${getCleanCharFilename(id)}.wav?raw=true`;
+    }
+
+
+    // --- SISTEMA DE SONIDO ---
+    const SoundManager = {
+        ctx: null,
+        init: function() {
+            // Inicializa el contexto de audio para los clicks sintéticos
+            if(!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            if(this.ctx.state === 'suspended') this.ctx.resume();
+        },
+        click: function() {
+            // Sonido "tic" sintético para la ruleta girando
+            if(!this.ctx) return;
+            const t = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(600, t);
+            osc.frequency.exponentialRampToValueAtTime(100, t + 0.1);
+            gain.gain.setValueAtTime(0.15, t);
+            gain.gain.exponentialRampToValueAtTime(0.01, t + 0.05);
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.start(); osc.stop(t + 0.1);
+        },
+        playWinSound: function(charId) {
+            // Reproduce el archivo WAV específico del personaje
+            const url = getCharSoundUrl(charId);
+            const audio = new Audio(url);
+            audio.volume = 0.6; // Volumen ajustable (0.0 a 1.0)
+            audio.play().catch(e => console.log("No se pudo reproducir el audio (posible bloqueo del navegador):", e));
+        }
+    };
+
+    const ROSTER = [
+        { id: "steve", name: "Steve", type: "Misc", score: 10 }, { id: "sonic", name: "Sonic", type: "Brawler", score: 10 },
+        { id: "joker", name: "Joker", type: "Sword", score: 10 }, { id: "pyra", name: "Pyra/Mythra", type: "Sword", score: 10 },
+        { id: "rob", name: "R.O.B.", type: "Shooter", score: 9 }, { id: "fox", name: "Fox", type: "Shooter", score: 9 },
+        { id: "mr_game_watch", name: "Mr. Game & Watch", type: "Misc", score: 9 }, { id: "kazuya", name: "Kazuya", type: "Brawler", score: 9 },
+        { id: "palutena", name: "Palutena", type: "Misc", score: 9 }, { id: "roy", name: "Roy", type: "Sword", score: 9 },
+        { id: "snake", name: "Snake", type: "Shooter", score: 9 }, { id: "cloud", name: "Cloud", type: "Sword", score: 9 },
+        { id: "pac_man", name: "Pac-Man", type: "Misc", score: 8 }, { id: "diddy_kong", name: "Diddy Kong", type: "Brawler", score: 8 },
+        { id: "wolf", name: "Wolf", type: "Shooter", score: 8 }, { id: "min_min", name: "Min Min", type: "Brawler", score: 8 },
+        { id: "yoshi", name: "Yoshi", type: "Brawler", score: 8 }, { id: "wario", name: "Wario", type: "Brawler", score: 8 },
+        { id: "shulk", name: "Shulk", type: "Sword", score: 8 }, { id: "terry", name: "Terry", type: "Brawler", score: 8 },
+        { id: "peach", name: "Peach", type: "Misc", score: 8 }, { id: "daisy", name: "Daisy", type: "Misc", score: 8 },
+        { id: "mario", name: "Mario", type: "Brawler", score: 7 }, { id: "samus", name: "Samus", type: "Shooter", score: 7 },
+        { id: "dark_samus", name: "Dark Samus", type: "Shooter", score: 7 }, { id: "byleth", name: "Byleth", type: "Sword", score: 7 },
+        { id: "pikachu", name: "Pikachu", type: "Brawler", score: 7 },  { id: "young_link", name: "Young Link", type: "Sword", score: 7 },
+        { id: "lucina", name: "Lucina", type: "Sword", score: 7 }, { id: "sephiroth", name: "Sephiroth", type: "Sword", score: 7 },
+        { id: "olimar", name: "Olimar", type: "Misc", score: 7 }, { id: "greninja", name: "Greninja", type: "Brawler", score: 7 },
+        { id: "sora", name: "Sora", type: "Sword", score: 7 }, { id: "falco", name: "Falco", type: "Shooter", score: 7 },
+        { id: "zero_suit_samus", name: "Zero Suit Samus", type: "Brawler", score: 7 }, { id: "chrom", name: "Chrom", type: "Sword", score: 6 },
+        { id: "captain_falcon", name: "Captain Falcon", type: "Brawler", score: 6 }, { id: "link", name: "Link", type: "Sword", score: 6 },
+        { id: "ness", name: "Ness", type: "Misc", score: 6 }, { id: "pichu", name: "Pichu", type: "Brawler", score: 6 },
+        { id: "megaman", name: "Mega Man", type: "Shooter", score: 6 }, { id: "ken", name: "Ken", type: "Brawler", score: 6 },
+        { id: "ryu", name: "Ryu", type: "Brawler", score: 6 }, { id: "hero", name: "Hero", type: "Sword", score: 6 },
+        { id: "inkling", name: "Inkling", type: "Shooter", score: 6 }, { id: "pit", name: "Pit", type: "Sword", score: 6 },
+        { id: "dark_pit", name: "Dark Pit", type: "Sword", score: 6 }, { id: "wii_fit_trainer", name: "Wii Fit Trainer", type: "Brawler", score: 6 },
+        { id: "luigi", name: "Luigi", type: "Brawler", score: 6 }, { id: "sheik", name: "Sheik", type: "Brawler", score: 5 },
+        { id: "meta_knight", name: "Meta Knight", type: "Sword", score: 5 }, { id: "corrin", name: "Corrin", type: "Sword", score: 5 },
+        { id: "ice_climbers", name: "Ice Climbers", type: "Misc", score: 5 }, { id: "bayonetta", name: "Bayonetta", type: "Brawler", score: 5 },
+        { id: "incineroar", name: "Incineroar", type: "Brawler", score: 5 }, { id: "bowser", name: "Bowser", type: "Heavy", score: 5 },
+        { id: "donkey_kong", name: "Donkey Kong", type: "Heavy", score: 5 }, { id: "rosalina_luma", name: "Rosalina & Luma", type: "Misc", score: 5 },
+        { id: "jigglypuff", name: "Jigglypuff", type: "Brawler", score: 5 }, { id: "toon_link", name: "Toon Link", type: "Sword", score: 5 },
+        { id: "lucas", name: "Lucas", type: "Misc", score: 5 }, { id: "marth", name: "Marth", type: "Sword", score: 5 },
+        { id: "ike", name: "Ike", type: "Sword", score: 5 }, { id: "mewtwo", name: "Mewtwo", type: "Misc", score: 4 },
+        { id: "ridley", name: "Ridley", type: "Heavy", score: 4 }, { id: "simon", name: "Simon", type: "Shooter", score: 4 },
+        { id: "richter", name: "Richter", type: "Shooter", score: 4 }, { id: "banjo_and_kazooie", name: "Banjo & Kazooie", type: "Brawler", score: 4 },
+        { id: "villager", name: "Villager", type: "Misc", score: 4 }, { id: "duck_hunt", name: "Duck Hunt", type: "Shooter", score: 4 },
+        { id: "isabelle", name: "Isabelle", type: "Misc", score: 4 }, { id: "robin", name: "Robin", type: "Sword", score: 4 },
+        { id: "zelda", name: "Zelda", type: "Misc", score: 4 }, { id: "lucario", name: "Lucario", type: "Brawler", score: 3 },
+        { id: "bowser_jr", name: "Bowser Jr.", type: "Misc", score: 3 }, { id: "piranha_plant", name: "Piranha Plant", type: "Misc", score: 3 },
+        { id: "king_k_rool", name: "King K. Rool", type: "Heavy", score: 3 }, { id: "king_dedede", name: "King Dedede", type: "Heavy", score: 3 },
+        { id: "dr_mario", name: "Dr. Mario", type: "Brawler", score: 3 }, { id: "little_mac", name: "Little Mac", type: "Brawler", score: 2 },
+        { id: "ganondorf", name: "Ganondorf", type: "Heavy", score: 1 }, { id: "pokemon_trainer", name: "Pokémon Trainer", type: "Misc", score: 8 }
+    ];
+
+    // ESTADO
+    let teams = [];
+    let teamNames = [];
+    let teamScores = [];
+    let teamsRerollUsed = []; 
+    let bannedChars = new Set();
+    let isSpinning = false;
+
+    const WHEEL_SLOTS = 20; 
+    const ARC = 360 / WHEEL_SLOTS;
+
+    window.onload = () => {
+        populateBanModal();
+        initWheel(true);
+        setupEmptyGrid();
+    };
+
+    function getValidPool() {
+        const filter = document.getElementById('class-filter').value;
+        return ROSTER.filter(c => !bannedChars.has(c.id) && (filter === 'all' || c.type === filter));
+    }
+
+    /* === RULETA VISUAL === */
+    function initWheel(isDemo, winnerChar) {
+        const wheel = document.getElementById('visual-wheel');
+        wheel.innerHTML = '';
+        let pool = getValidPool();
+        let displayPool = [];
+        while(displayPool.length < WHEEL_SLOTS) {
+            if(pool.length > 0) displayPool = displayPool.concat(pool);
+            else displayPool = displayPool.concat(ROSTER);
+        }
+        displayPool = displayPool.slice(0, WHEEL_SLOTS);
+
+        let winnerIdx = -1;
+        if(winnerChar) {
+            winnerIdx = Math.floor(Math.random() * WHEEL_SLOTS);
+            displayPool[winnerIdx] = winnerChar;
+        } else { displayPool.sort(() => Math.random() - 0.5); }
+
+        displayPool.forEach((char, i) => {
+            const seg = document.createElement('div');
+            seg.className = 'wheel-segment';
+            seg.style.transform = `rotate(${(i * ARC) + (ARC/2)}deg)`;
+            const img = document.createElement('img');
+            img.className = 'segment-icon';
+            img.src = getCharImage(char.id);
+            seg.appendChild(img);
+            wheel.appendChild(seg);
+        });
+
+        let grad = 'conic-gradient(';
+        for(let i=0; i<WHEEL_SLOTS; i++) {
+            grad += `${(i%2===0)?'#900':'#222'} ${i*ARC}deg ${(i+1)*ARC}deg, `;
+        }
+        wheel.style.background = grad.slice(0,-2) + ')';
+        return winnerIdx;
+    }
+
+    /* === MODAL BANS === */
+    function populateBanModal() {
+        const grid = document.getElementById('ban-grid');
+        grid.innerHTML = '';
+        [...ROSTER].sort((a,b) => a.name.localeCompare(b.name)).forEach(char => {
+            const card = document.createElement('div');
+            card.className = 'ban-card';
+            card.innerHTML = `<img src="${getCharImage(char.id)}"> ${char.name}`;
+            card.onclick = () => {
+                if(bannedChars.has(char.id)) {
+                    bannedChars.delete(char.id); card.classList.remove('banned');
+                } else {
+                    bannedChars.add(char.id); card.classList.add('banned');
+                }
+                if(!isSpinning) initWheel(true);
+            };
+            grid.appendChild(card);
+        });
+    }
+    function openBanModal() { document.getElementById('ban-modal').classList.add('open'); }
+    function closeBanModal() { document.getElementById('ban-modal').classList.remove('open'); }
+
+    /* === GESTION DE EQUIPOS === */
+    function setupEmptyGrid() {
+        const count = parseInt(document.getElementById('team-count').value);
+        const size = parseInt(document.getElementById('team-size').value);
+        
+        teams = [];
+        teamsRerollUsed = []; 
+
+        if (!teamNames) teamNames = [];
+        if (!teamScores) teamScores = [];
+
+        for(let i=0; i<count; i++) {
+            teams.push(new Array(size).fill(null));
+            teamsRerollUsed.push(false); 
+            
+            if(teamNames[i] === undefined) teamNames[i] = `EQUIPO ${i+1}`;
+            if(teamScores[i] === undefined) teamScores[i] = 0;
+        }
+        
+        if(teamNames.length > count) {
+            teamNames.length = count;
+            teamScores.length = count;
+        }
+
+        document.getElementById('winner-overlay').classList.remove('show');
+        renderTeams();
+        updateSpinButton();
+    }
+
+    function getNextSlot() {
+        const mode = document.getElementById('fill-order').value;
+        const nT = teams.length; if(nT===0) return null; const nS = teams[0].length;
+        if(mode === 'sequential') {
+            for(let t=0; t<nT; t++) for(let s=0; s<nS; s++) if(teams[t][s]===null) return {t, s};
+        } else {
+            for(let s=0; s<nS; s++) for(let t=0; t<nT; t++) if(teams[t][s]===null) return {t, s};
+        }
+        return null;
+    }
+
+    function updateSpinButton() {
+        const btn = document.getElementById('btn-central-spin');
+        if(!getNextSlot()) { btn.disabled = true; btn.innerText = "DRAFT COMPLETO"; }
+        else { btn.disabled = false; btn.innerText = "🎲 GIRAR RULETA"; }
+    }
+
+    /* === GIRO PRINCIPAL CON SONIDO === */
+    function triggerCentralSpin() {
+        if(isSpinning) return;
+        const slot = getNextSlot();
+        if(!slot) return;
+
+        SoundManager.init(); // Activar contexto de audio para los clicks
+
+        document.getElementById('winner-overlay').classList.remove('show');
+        let pool = getValidPool();
+        const allowDupes = document.getElementById('allow-dupes').checked;
+        if(!allowDupes) {
+            let used = [];
+            teams.forEach(row => row.forEach(c => { if(c) used.push(c.id); }));
+            pool = pool.filter(c => !used.includes(c.id));
+        }
+        if(pool.length === 0) { alert("No quedan personajes!"); return; }
+
+        const winner = pool[Math.floor(Math.random() * pool.length)];
+        const winnerIdx = initWheel(false, winner);
+
+        isSpinning = true;
+        document.getElementById('btn-central-spin').disabled = true;
+
+        const segmentAngle = (winnerIdx * ARC) + (ARC/2);
+        const targetRot = (360 * 5) + (180 - segmentAngle);
+        const wheel = document.getElementById('visual-wheel');
+        wheel.style.transition = 'transform 3.5s cubic-bezier(0.1, 0.8, 0.1, 1)';
+        wheel.style.transform = `rotate(${targetRot}deg)`;
+
+        // --- LOGICA DE CLICKS ---
+        let elapsedTime = 0;
+        const totalTime = 3500;
+        
+        const playTicks = () => {
+            if(!isSpinning) return;
+            // Calculamos intervalo basado en tiempo: Rapido al inicio (50ms), lento al final (300ms)
+            let interval = 50; 
+            if (elapsedTime > 1500) interval = 100;
+            if (elapsedTime > 2500) interval = 200;
+            if (elapsedTime > 3000) interval = 300;
+            
+            if(elapsedTime < totalTime - 200) { // Dejar de sonar un poco antes del final
+                SoundManager.click();
+                setTimeout(playTicks, interval);
+                elapsedTime += interval;
+            }
+        };
+        playTicks(); // Iniciar clicks
+
+        setTimeout(() => {
+            teams[slot.t][slot.s] = winner;
+            renderTeams();
+            
+            // REPRODUCIR SONIDO ESPECÍFICO DEL GANADOR
+            SoundManager.playWinSound(winner.id); 
+
+            const ov = document.getElementById('winner-overlay');
+            document.getElementById('win-img').src = getCharImage(winner.id);
+            document.getElementById('win-name').innerText = winner.name;
+            document.getElementById('win-pa').innerText = `PA: ${winner.score}`;
+            ov.classList.add('show');
+            
+            setTimeout(() => {
+                const c = document.getElementById(`card-${slot.t}-${slot.s}`);
+                if(c) { c.scrollIntoView({behavior:"smooth", block:"center"}); c.classList.add('active-spin'); }
+            }, 100);
+
+            wheel.style.transition = 'none';
+            wheel.style.transform = `rotate(${targetRot % 360}deg)`;
+            isSpinning = false;
+            updateSpinButton();
+        }, 3500);
+    }
+
+    /* === RENDERIZADO === */
+    function renderTeams() {
+        const container = document.getElementById('teams-container');
+        const act = document.activeElement; const actId = act ? act.id : null;
+        container.innerHTML = '';
+
+        teams.forEach((team, tIdx) => {
+            const score = teamScores[tIdx];
+            const paTotal = team.reduce((a,c) => a + (c?c.score:0), 0);
+            const isRerollUsed = teamsRerollUsed[tIdx];
+
+            const block = document.createElement('div');
+            block.className = 'team-block';
+            block.innerHTML = `
+                <div class="team-info">
+                    <div>
+                        <input type="text" class="team-name-edit" id="tname-${tIdx}" value="${teamNames[tIdx]}" oninput="teamNames[${tIdx}]=this.value">
+                        <span style="color:#aaa; font-size:0.8rem; margin-left:5px;">⚡ ${paTotal} PA</span>
+                    </div>
+                    <div class="score-control">
+                        <button class="score-btn" onclick="modScore(${tIdx}, -1)">-</button>
+                        <span style="font-weight:bold; color:var(--ssbu-yellow); width:20px; text-align:center;">${score}</span>
+                        <button class="score-btn" onclick="modScore(${tIdx}, 1)">+</button>
+                        <span style="font-size:1.2rem;">🏆</span>
+                    </div>
+                </div>
+            `;
+
+            const grid = document.createElement('div');
+            grid.className = 'cards-grid';
+            team.forEach((char, cIdx) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.id = `card-${tIdx}-${cIdx}`;
+                
+                if(char) {
+                    const btnText = isRerollUsed ? '🔒 AGOTADO' : '↻ REROLL';
+                    const disabledAttr = isRerollUsed ? 'disabled' : '';
+
+                    card.innerHTML = `
+                        <div class="card-pa">${char.score}</div>
+                        <img src="${getCharImage(char.id)}" class="card-img">
+                        <div class="card-name">${char.name}</div>
+                        <button class="btn-mini-reroll" ${disabledAttr} onclick="rerollOne(${tIdx}, ${cIdx})">${btnText}</button>
+                    `;
+                } else {
+                    card.style.opacity = '0.3'; card.style.borderStyle = 'dashed';
+                    card.innerHTML = `<div style="margin:auto; color:#555; font-size:2rem;">?</div>`;
+                }
+                grid.appendChild(card);
+            });
+            block.appendChild(grid); container.appendChild(block);
+        });
+        if(actId && document.getElementById(actId)) document.getElementById(actId).focus();
+    }
+
+    function modScore(idx, val) {
+        teamScores[idx] = Math.max(0, teamScores[idx] + val);
+        renderTeams();
+    }
+
+    function generateAllTeams() {
+        setupEmptyGrid();
+        let pool = getValidPool();
+        const allowDupes = document.getElementById('allow-dupes').checked;
+        let used = new Set();
+        for(let t=0; t<teams.length; t++) {
+            for(let s=0; s<teams[0].length; s++) {
+                let avail = allowDupes ? pool : pool.filter(c => !used.has(c.id));
+                if(avail.length === 0) avail = pool;
+                if(avail.length === 0) break;
+                const pick = avail[Math.floor(Math.random() * avail.length)];
+                teams[t][s] = pick; used.add(pick.id);
+            }
+        }
+        renderTeams();
+        updateSpinButton();
+    }
+
+    function rerollOne(t, s) {
+        if(isSpinning) return;
+        if(teamsRerollUsed[t]) return; 
+
+        let pool = getValidPool();
+        const current = teams[t][s];
+        pool = pool.filter(c => c.id !== current.id);
+        if(pool.length === 0) return;
+        
+        const winner = pool[Math.floor(Math.random() * pool.length)];
+        teams[t][s] = winner;
+        teamsRerollUsed[t] = true;
+
+        // Reproducir sonido específico en el reroll también
+        SoundManager.playWinSound(winner.id); 
+
+        renderTeams();
+        const c = document.getElementById(`card-${t}-${s}`);
+        c.classList.add('active-spin');
+    }
+</script>
+</body>
+</html>
